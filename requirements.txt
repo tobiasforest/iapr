@@ -1,7 +1,9 @@
-numpy
+numpy~=1.19.5
 scipy
 scikit-image
 matplotlib
 jupyter
 scikit-learn
 opencv-python
+
+pandas~=1.1.5
