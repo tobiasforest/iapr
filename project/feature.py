@@ -5,6 +5,22 @@ import cv2
 import matplotlib.pyplot as plt
 
 def build_gabor_filters():
+    """
+    Builds a set of Gabor filters.
+
+    Args:
+        None
+
+    Returns:
+        filters (list): A list of Gabor filters.
+
+    Raises:
+        None
+
+    Examples:
+        >>> build_gabor_filters()
+        [filter1, filter2, filter3]
+    """
     filters = []
     ksize = 31
     # Define the number of orientations and scales for the Gabor filters
@@ -16,6 +32,23 @@ def build_gabor_filters():
     return filters
 
 def apply_gabor_filters(image, filters):
+    """
+    Applies a set of Gabor filters to an image.
+
+    Args:
+        image (numpy.ndarray): The input image.
+        filters (list): The list of Gabor filters.
+
+    Returns:
+        responses (list): The list of responses of the Gabor filters.
+        
+    Raises:
+        None
+
+    Examples:
+        >>> apply_gabor_filters(image, filters)
+        [response1, response2, response3]
+    """
     responses = []
     for kern in filters:
         filtered_image = cv2.filter2D(image, cv2.CV_8UC3, kern)
@@ -26,7 +59,6 @@ def color_histogram(image, bins=(8, 8, 8)):
     hist = cv2.calcHist([image], [0, 1, 2], None, bins, [0, 256, 0, 256, 0, 256])
     cv2.normalize(hist, hist)
     return hist.flatten()
-
 
 def gabor_histogram(image, filters, bins=10):
     responses = apply_gabor_filters(image, filters)
@@ -39,6 +71,24 @@ def color_range(image):
     return np.array(ranges)
 
 def extract_features(image):
+    """
+    Extracts the features from an image.
+
+    Args:
+        image (numpy.ndarray): The input image.
+
+    Returns:
+        bool: True if the contours are twins, False otherwise.
+
+    Raises:
+        None
+
+    Examples:
+        >>> twin_contours(contour1, contour2)
+        True
+        >>> twin_contours(contour1, contour3)
+        False
+    """
     filters = build_gabor_filters()
     gabor_features = gabor_histogram(image, filters)
     color_features = color_histogram(image)
@@ -61,8 +111,7 @@ def perform_pca(data, n_components=10):
     return pca_result
 
 def extract_features_from_pieces(pieces):
-    return [extract_features(piece) for piece in pieces]
-    
+    return np.array([extract_features(piece) for piece in pieces])
     
 def plot_features(features):
     plt.figure(figsize=(20, 10))
@@ -72,6 +121,4 @@ def plot_features(features):
 
 def plot_features_from_pieces(pieces):
     features = extract_features_from_pieces(pieces)
-    print("Number of pieces found: ", len(pieces))
-    print("Number of features: ", len(features[0]))
     plot_features(features)

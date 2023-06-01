@@ -4,7 +4,21 @@ import numpy as np
 from skimage import filters
 
 def plot_color_histograms(image_path: str, title: str = ''):
-    '''Plots the color histograms for the image at the given path.'''
+    """
+    Plots the color histograms for the input image.
+
+    Args:
+        image_path (str): The path to the input image.
+
+    Returns:
+        None
+
+    Raises:
+        None
+
+    Examples:
+        >>> plot_color_histograms('train_00.png', 'Train Image 00')
+    """
     
     image = cv2.imread(image_path)
     # Convert the image from BGR to RGB format
@@ -44,7 +58,25 @@ def plot_color_histograms(image_path: str, title: str = ''):
     plt.show()
     
 def twin_contours(contour1, contour2):
-    '''Returns True if the two contours are twins, False otherwise.'''
+    """
+    Checks if two contours are twins.
+
+    Args:
+        contour1 (numpy.ndarray): The first contour.
+        contour2 (numpy.ndarray): The second contour.
+
+    Returns:
+        bool: True if the contours are twins, False otherwise.
+
+    Raises:
+        None
+
+    Examples:
+        >>> twin_contours(contour1, contour2)
+        True
+        >>> twin_contours(contour1, contour3)
+        False
+    """
     
     # Get the bounding rectangles for the two contours
     x1, y1, w1, h1 = cv2.boundingRect(contour1)
@@ -58,7 +90,24 @@ def twin_contours(contour1, contour2):
     return distance < length_side_square / 2.0
 
 def combine_contours(contours_red, contours_green, contours_blue):
-    # Combine all contours and keep track of their origins
+    """
+    Combines the contours from the three color channels.
+
+    Args:
+        contours_red (list): The list of contours from the red channel.
+        contours_green (list): The list of contours from the green channel.
+        contours_blue (list): The list of contours from the blue channel.
+
+    Returns:
+        list: The list of all contours.
+
+    Raises:
+        None
+
+    Examples:
+        >>> combine_contours(contours_red, contours_green, contours_blue)
+        [(contour1, 'red'), (contour2, 'green'), (contour3, 'blue')]
+    """
     all_contours = [(contour, 'red') for contour in contours_red]
     all_contours += [(contour, 'green') for contour in contours_green]
     all_contours += [(contour, 'blue') for contour in contours_blue]
@@ -66,7 +115,22 @@ def combine_contours(contours_red, contours_green, contours_blue):
     return all_contours
 
 def get_final_contours(all_contours):
-    # Filter out twin contours and keep the one with the highest area
+    """
+    Gets the final contours from the list of all contours.
+
+    Args:
+        all_contours (list): The list of all contours.
+
+    Returns:
+        list: The list of final contours.
+
+    Raises:
+        None
+
+    Examples:
+        >>> get_final_contours(all_contours)
+        [contour1, contour2, contour3]
+    """
     final_contours = []
     for i in range(len(all_contours)):
         is_twin = False
@@ -82,7 +146,24 @@ def get_final_contours(all_contours):
     return final_contours
 
 def get_contours_channel(image, threshold=0.02, channel=0):
-    #Filter the image using a Sobel filter
+    """
+    Gets the contours from the specified channel of the image.
+
+    Args:
+        image (numpy.ndarray): The input image.
+        threshold (float): The threshold value for the Sobel filter.
+        channel (int): The channel to use for the contours.
+
+    Returns:
+        list: The list of contours.
+
+    Raises:
+        None
+
+    Examples:
+           get_contours_channel(image, threshold=0.02, channel=0)
+        [contour1, contour2, contour3]
+    """
     image_sobel = filters.sobel(image[..., channel])
 
     markers = np.zeros_like(image_sobel)
@@ -110,6 +191,22 @@ def get_contours_channel(image, threshold=0.02, channel=0):
     return filtered_contours
 
 def get_convex_contours(contours):
+    """
+    Gets the convex contours from the list of contours.
+
+    Args:
+        contours (list): The list of contours.
+
+    Returns:
+        list: The list of convex contours.
+
+    Raises:
+        None
+
+    Examples:
+        >>> get_convex_contours(contours)
+        [convex_contour1, convex_contour2, convex_contour3]
+    """
     convex_contours = []
     for contour in contours:
         convex_contour = cv2.convexHull(contour)
@@ -117,7 +214,23 @@ def get_convex_contours(contours):
     return convex_contours
 
 def segmentate_pieces(image, threshold=0.02):
+    """
+    Segments the pieces from the input image.
 
+    Args:
+        image (numpy.ndarray): The input image.
+        threshold (float): The threshold value for the Sobel filter.
+        
+    Returns:
+        list: The list of contours of the pieces after complete segmentation.
+
+    Raises:
+        None
+
+    Examples:
+        >>> segmentate_pieces(image, threshold=0.02)
+        [contour1, contour2, contour3]
+    """
     red_contours = get_contours_channel(image, threshold, 2)
     green_contours = get_contours_channel(image, threshold, 1)
     blue_contours = get_contours_channel(image, threshold, 0)
@@ -131,6 +244,14 @@ def segmentate_pieces(image, threshold=0.02):
         cv2.drawContours(image_with_contours, [contour], 0, (0, 0, 255), 5)
 
     return convex_contours
+
+def get_mask(image):
+    correct_contours = segmentate_pieces(image)
+    # Create an empty black image of the same size as the input image
+    mask = np.zeros_like(image)
+    # Draw contours on the black image
+    cv2.drawContours(mask, correct_contours, -1, (1), thickness=-1)
+    return mask
 
 
 def get_rotated_crop(image, contour):
@@ -161,8 +282,19 @@ def get_rotated_crop(image, contour):
     # Recalculate the bounding box based on the rotated contour
     x, y, w, h = cv2.boundingRect(rotated_contour)
 
+    # Calculate the center coordinates of the rotated bounding box
+    center_x = x + w // 2
+    center_y = y + h // 2
+
+    # Calculate the crop boundaries based on the desired size (128, 128)
+    crop_size = 128
+    x_min = max(0, center_x - crop_size // 2)
+    y_min = max(0, center_y - crop_size // 2)
+    x_max = min(image.shape[1], x_min + crop_size)
+    y_max = min(image.shape[0], y_min + crop_size)
+
     # Crop the rotated image
-    cropped_image = rotated_image[y:y+h, x:x+w]
+    cropped_image = rotated_image[y_min:y_max, x_min:x_max]
 
     return cropped_image
 

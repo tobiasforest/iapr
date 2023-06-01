@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 from sklearn.decomposition import KernelPCA
 import cv2
 from sklearn.preprocessing import MinMaxScaler
+import segmentation as seg
+import feature as feat
 
 def clusters_check(features, labels):
     labels = check_outlier_cluster(labels, max_num_outliers=3)
@@ -13,63 +15,39 @@ def clusters_check(features, labels):
     return labels
 
 def outliers_k_means(labels, num_outliers_max=3):
-    # Outlier detection based on smaller cluster size
-    # Count the occurrences of each cluster
     cluster_counts = np.bincount(labels)
-    
-    # Find the index of the cluster with the least occurrences
     if cluster_counts[np.argmin(cluster_counts)] <= num_outliers_max: 
         outlier_cluster = np.argmin(cluster_counts)
-        # Replace outlier label by -1
         labels[labels == outlier_cluster] = -1
     else:
         outlier_cluster = None
-    
     return labels
 
 
 def remove_false_outliers(labels, max_num_outliers=3):
-    # Count the number of outliers in the outlier cluster
     outlier_indices = np.where(labels == -1)[0]
     num_outliers = outlier_indices.shape[0]
-
-    # If the number of outliers exceeds the maximum, remove the outlier cluster
     if num_outliers > max_num_outliers:
-        # Create a new cluster for the removed outlier points
         new_cluster_index = np.max(labels) + 1
         labels[outlier_indices] = new_cluster_index
-    
     return labels
 
 
 def detect_outlier_cluster(labels, acceptable_sizes=(9,12,16), max_num_outliers=3):
-    # Check that there is not an outlier cluster
     unique_labels = np.unique(labels)
     if -1 not in unique_labels:
-        # Get the size of the clusters
         cluster_sizes=[]
         for label in unique_labels:
             cluster_pts_idx = np.where(labels == label)[0]
             cluster_size = cluster_pts_idx.shape[0]
             cluster_sizes.append(cluster_size)
-        
-        # Check if there is only one cluster with size not in acceptable_size
-        # Count the number of clusters with acceptable sizes
         count_acceptable_sizes = sum(size in acceptable_sizes for size in cluster_sizes)
-        
         if count_acceptable_sizes == len(cluster_sizes) - 1:
-            print("There is only one cluster that doesn't have the acceptable size.")
-            # Find the index of the cluster that doesn't have the acceptable size
             outlier_cluster_index=[index for index, size in enumerate(cluster_sizes) if size not in acceptable_sizes]
-            
-            # Find the index of the outlier cluster in the labels array
             outlier_cluster_label = unique_labels[outlier_cluster_index]
-            
-            #replace the labels to -1 for the outlier cluster
             labels[labels==outlier_cluster_label]=-1
         else:
             print("There are multiple clusters that don't have the acceptable size.")
-    
     return labels
 
 def check_outlier_cluster(labels, max_num_outliers=3):
@@ -78,38 +56,26 @@ def check_outlier_cluster(labels, max_num_outliers=3):
     return labels
 
 def combine_clusters(labels, acceptable_sizes=(9, 12, 16)):
-    # Assemble the clusters with acceptable sizes
     unique_labels = np.unique(labels)
-    
-    # Remove the outlier cluster
     unique_labels = unique_labels[unique_labels!=-1]
-    
-    # Iterate over the clusters
     for i, label in enumerate(unique_labels):
-        # Get the points of the cluster
         cluster_pts_idx = np.where(labels == label)[0]
 
         cluster_size = cluster_pts_idx.shape[0]
         if cluster_size < min(acceptable_sizes):
-            # Check if combining with another cluster can reach an acceptable size
             for j, label2 in enumerate(np.unique(labels)):
                 if j == i:
-                    # Skip the current cluster
                     continue
                 else:
                     other_cluster_pts_idx = np.where(labels == label2)[0]
                     other_cluster_size = other_cluster_pts_idx.shape[0]
                     combined_size = cluster_size + other_cluster_size
                     if combined_size in acceptable_sizes:
-                        # Combine the clusters
                         labels[other_cluster_pts_idx] = label
     
     return labels
 
 def separate_mixed_cluster(features, labels, acceptable_sizes=(9, 12, 16)):
-    # Separate a cluster mixing 2 and therefore having size acceptable_size*2
-    
-    # Get all possible combinations sizes of acceptable sizes
     combinations_sizes = []
     for i in acceptable_sizes:
         for j in acceptable_sizes:
@@ -128,7 +94,6 @@ def separate_mixed_cluster(features, labels, acceptable_sizes=(9, 12, 16)):
         cluster_size = cluster_pts_idx.shape[0]
         
         if cluster_size in combinations_sizes:
-            print(f"Cluster {i} has size {cluster_size} and is a mix of 2 clusters")
             cluster_pts = features[cluster_pts_idx]
             
             # Use kmeans to separate the cluster into 2 clusters
@@ -140,7 +105,6 @@ def separate_mixed_cluster(features, labels, acceptable_sizes=(9, 12, 16)):
             
             # Update labels 
             labels[cluster_pts_idx]=labels2
-            print(f"Updated labels: {labels}")
     return labels
 
 def get_PCA_features(features, n_components=3):
@@ -168,9 +132,6 @@ def cluster_features(features, max_clusters=6):
             inertia_changes.append((last_inertia - kmeans.inertia_) / last_inertia)
         last_inertia = kmeans.inertia_
 
-        print("For n_clusters =", n_clusters,
-              "The average silhouette_score is :", silhouette_avg,
-              "The inertia is :", kmeans.inertia_)
     return kmeans_models, inertia_values, silhouette_scores, inertia_changes
 
 def plot_clustering_scores(inertia_values, silhouette_scores):
@@ -262,6 +223,7 @@ def find_optimal_clusters(inertia_values, silhouette_scores):
             # 5) distance to elbow point: we want to minimize this (hence the negative sign)
             # the factors are combined as a weighted sum, adjust the weights as needed
             score = -scaled_values[i, 0]  + scaled_values[i, 1] 
+            # We discarded the rest for better results
             scores.append(score)
         except ZeroDivisionError:
             continue
@@ -283,3 +245,22 @@ def get_labels_pieces(features):
     labels = clusters_check(features, labels)
     
     return labels
+
+def get_cluster_list(image):
+    pieces = seg.extract_pieces_from_image(image)
+    features = feat.extract_features_from_pieces(pieces)
+    labels = get_labels_pieces(features)
+    unique_labels = set(labels)
+    print(unique_labels)
+    cluster_list = []
+    outlier_list = []
+    for label in unique_labels:
+        if label == -1:
+            outlier_list = [pieces[index] for index, curr_label in enumerate(labels) if curr_label == label]
+        else:
+            indices = [index for index, curr_label in enumerate(labels) if curr_label == label]
+            cluster_pieces = [pieces[index] for index in indices]
+            cluster_list.append(cluster_pieces)
+    print(len(cluster_list))
+    cluster_list.append(outlier_list)
+    return cluster_list
