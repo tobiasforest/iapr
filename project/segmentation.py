@@ -250,8 +250,11 @@ def get_mask(image):
     # Create an empty black image of the same size as the input image
     mask = np.zeros_like(image)
     # Draw contours on the black image
-    cv2.drawContours(mask, correct_contours, -1, (1), thickness=-1)
-    return mask
+    cv2.drawContours(mask, correct_contours, -1, (255), thickness=-1)
+    
+    mask_gray = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
+
+    return mask_gray
 
 
 def get_rotated_crop(image, contour):
