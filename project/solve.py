@@ -1,7 +1,9 @@
 import os
 from PIL import Image
 import numpy as np
-import matplotlib.pyplot as plt
+import segmentation as seg
+import feature as feat
+import clustering as clust
 
 def load_input_image(image_index, folder="train2", path="../data/data_project"):
     filename = "train_{}.png".format(str(image_index).zfill(2))
@@ -47,3 +49,14 @@ def solve_and_export_puzzles_image(image_index, folder="train2", path="../data/d
     save_solution_puzzles(image_index, solved_puzzles, outlier_images, folder=folder, group_id=group_id)
 
     return image_loaded, solved_puzzles, outlier_images
+
+def cluster_pieces_from_image(image_path):
+    pieces = seg.extract_pieces_from_image(image_path)
+    features = feat.extract_features_from_pieces(pieces)
+    labels = clust.get_labels_pieces(features)
+    
+    clust.plot_clustered_pieces(pieces, labels)
+    
+    return pieces, labels
+
+    
