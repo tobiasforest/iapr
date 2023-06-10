@@ -2,7 +2,6 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.decomposition import KernelPCA
 import cv2
 from sklearn.preprocessing import MinMaxScaler
 import segmentation as seg
@@ -106,11 +105,6 @@ def separate_mixed_cluster(features, labels, acceptable_sizes=(9, 12, 16)):
             # Update labels 
             labels[cluster_pts_idx]=labels2
     return labels
-
-def get_PCA_features(features, n_components=3):
-    pca = KernelPCA(n_components=n_components,kernel="rbf")
-    features_PCA = pca.fit_transform(features)
-    return features_PCA
 
 def cluster_features(features, max_clusters=6):
     kmeans_models = []
@@ -232,9 +226,6 @@ def find_optimal_clusters(inertia_values, silhouette_scores):
     return optimal_clusters
 
 def get_labels_pieces(features):
-    
-    features = features / np.linalg.norm(features, axis=1)[:, None]
-    features = get_PCA_features(features, n_components=4)
     kmeans_models, inertia_values, silhouette_scores, inertia_changes = cluster_features(features)
     optimal_clusters = find_optimal_clusters(inertia_values, silhouette_scores)
     

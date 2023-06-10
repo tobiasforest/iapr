@@ -1,8 +1,8 @@
-from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
+from sklearn.decomposition import KernelPCA
+
 
 def build_gabor_filters():
     """
@@ -96,22 +96,18 @@ def extract_features(image):
     features = np.concatenate((gabor_features, color_features, color_ranges))
     return features
 
-def perform_pca(data, n_components=10):
-    
-    # Standardize the data
-    scaler = StandardScaler()
-    data_scaled = scaler.fit_transform(data)
-    
-    # Create PCA instance
-    pca = PCA(n_components=n_components)
-    
-    # Perform PCA
-    pca_result = pca.fit_transform(data)
-    
-    return pca_result
+def get_PCA_features(features, n_components=3):
+    pca = KernelPCA(n_components=n_components,kernel="rbf")
+    features_PCA = pca.fit_transform(features)
+    return features_PCA
 
 def extract_features_from_pieces(pieces):
-    return np.array([extract_features(piece) for piece in pieces])
+    features_all = []
+    for piece in pieces:
+        features_all.append(extract_features(piece))
+    features_all = features_all / np.linalg.norm(features_all, axis=1)[:, None]
+    features_all = get_PCA_features(features_all, n_components=3)
+    return features_all
     
 def plot_features(features):
     plt.figure(figsize=(20, 10))
